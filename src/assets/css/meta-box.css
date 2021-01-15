@@ -1,0 +1,28 @@
+.wca_custom_meta_boxes label {
+	width: 100%;
+	float: left;
+	display: block;
+	font-weight: bold;
+	margin: 0 0 10px;
+	padding: 0;
+}
+.wca_custom_meta_boxes .wca_meta_inputs {
+    padding: 15px 0;
+    border-bottom: 1px solid #e2e4e7;
+}
+.wca_custom_meta_boxes input[type="text"],.wca_custom_meta_boxes input[type="number"], .wca_custom_meta_boxes select, .wca_custom_meta_boxes textarea{
+	width: 100%;
+	padding: 3px 5px;
+}
+.wca_meta_inputs .wca_meta_inputs_half {
+    width: 47% !important;
+    border-right: 1px solid #e2e4e7;
+    padding: 0 15px;
+    display: inline-block;
+}
+.wca_meta_inputs .wca_meta_inputs_half:last-child {
+    border: none;
+}
+.wca_meta_inputs .hidden_mod{
+	display: none;
+}

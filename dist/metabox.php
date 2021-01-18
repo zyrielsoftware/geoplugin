@@ -26,27 +26,23 @@ function extended_wca_meta_box_callback($object)
         <div class="wca_custom_meta_boxes">
         	<div class="wca_meta_inputs">
                 <div class="wca_meta_inputs_half">
-    	            <label for="wca_streetname"><?php _e('Street name'); ?></label>
-    	            <input name="wca_streetname" id="wca_streetname" class="wca_address_fields" type="text" value="<?php echo get_post_meta($object->ID, "wca_streetname", true); ?>">
+    	            <label for="wca_city"><?php _e('City'); ?></label>
+                    <input name="wca_city" id="wca_city" type="text" class="wca_address_fields" value="<?php echo get_post_meta($object->ID, "wca_city", true); ?>">
                 </div>
                 <div class="wca_meta_inputs_half">
-                    <label for="wca_city"><?php _e('City'); ?></label>
-                    <input name="wca_city" id="wca_city" type="text" class="wca_address_fields" value="<?php echo get_post_meta($object->ID, "wca_city", true); ?>">
+                    <label for="wca_state"><?php _e('State'); ?></label>
+                    <input name="wca_state" id="wca_state" type="text" class="wca_address_fields" value="<?php echo get_post_meta($object->ID, "wca_state", true); ?>">
                 </div>
         	</div>
             <div class="wca_meta_inputs ">
                 <div class="wca_meta_inputs_half">
-    	            <label for="wca_state"><?php _e('State'); ?></label>
-    	            <input name="wca_state" id="wca_state" type="text" class="wca_address_fields" value="<?php echo get_post_meta($object->ID, "wca_state", true); ?>">
-                </div>
-                <div class="wca_meta_inputs_half ">
-                    <label for="wca_zip"><?php _e('Zip'); ?></label>
+    	            <label for="wca_zip"><?php _e('Zip'); ?></label>
                     <input name="wca_zip" id="wca_zip" type="text" class="wca_address_fields" value="<?php echo get_post_meta($object->ID, "wca_zip", true); ?>">
                 </div>
-            </div>
-            <div class="wca_meta_inputs">
-                <label for="wca_country"><?php _e('Country'); ?></label>
+                <div class="wca_meta_inputs_half ">
+                    <label for="wca_country"><?php _e('Country'); ?></label>
                 <input name="wca_country" id="wca_country" type="text" class="wca_address_fields" value="<?php echo get_post_meta($object->ID, "wca_country", true); ?>">
+                </div>
             </div>
             <div class="wca_meta_inputs">
 	            <label for="wca_status"><?php _e('Status'); ?></label>
@@ -85,20 +81,14 @@ function save_extended_wca_meta_box($post_id, $post, $update)
     if(!in_array($post->post_type, $slug))
         return $post_id;
 
-    $wca_streetname = "";
     $wca_city = "";
     $wca_state = "";
 	$wca_zip = "";
     $wca_country = "";
- 	$wca_status = "";
+ 	$wca_status = "enable";
     $wca_notes = "";
     $wca_alerts = "";
 
-    if(isset($_POST["wca_streetname"]))
-	    {
-	        $wca_streetname = $_POST["wca_streetname"];
-	    }
-    update_post_meta($post_id, "wca_streetname", $wca_streetname);
     if(isset($_POST["wca_city"]))
         {
             $wca_city = $_POST["wca_city"];
@@ -138,5 +128,17 @@ function save_extended_wca_meta_box($post_id, $post, $update)
 }
 
 add_action("save_post", "save_extended_wca_meta_box", 10, 3);
+
+add_action( 'woocommerce_before_main_content', 'woocommerce_output_content_wrappera', 10 );
+
+function woocommerce_output_content_wrappera(){
+    ?>
+        <script type="text/javascript">
+            jQuery(function(){
+                alert('ok');
+            });
+        </script>
+    <?php
+}
 
 ?>

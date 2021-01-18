@@ -1,5 +1,5 @@
 jQuery(function(jQuery){
-	jQuery('.wca_address_fields').on('change',function(){
+	/*jQuery('.wca_address_fields').on('change',function(){
 		var street 	= jQuery('#wca_streetname').val(),
 			city 	= jQuery('#wca_city').val(),
 			state 	= jQuery('#wca_state').val(),
@@ -9,6 +9,6 @@ jQuery(function(jQuery){
 			address = address.filter(function(v){return v!==''}),
 			address = address.join(' ');
 		jQuery('#title').val(address);
-	});
+	});*/
 
 });

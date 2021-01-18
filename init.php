@@ -22,22 +22,38 @@ class WC_addresses {
     public function __construct() {
         add_action( 'init', array( $this, 'wc_addresses_plugin'));
         add_action( 'admin_enqueue_scripts', array( $this, 'wca_admin_assets' ));
+        add_action('wp_enqueue_scripts', array($this, 'wca_frontend_assets'));
         add_action( 'init', array( $this, 'wc_addresses' ) );
+        add_filter( 'enter_title_here', array($this,'wca_change_title_text' ));
         add_action( 'init', array( $this, 'wca_taxonomy'), 0 );
         add_filter( 'manage_wc-address_posts_columns', array( $this, 'wca_columns') );
         add_action( 'manage_wc-address_posts_custom_column', array( $this, 'wca_columns_data'), 10, 2);
         add_filter( 'manage_edit-wc-address_sortable_columns', array( $this,'wca_sortable_columns'));
+        add_action('restrict_manage_posts', array($this,'wca_filterable_column'));
+        add_filter('parse_query', array($this,'wca_filter_query'));
+        add_action('admin_menu', array($this, 'wca_add_menu_pages'));
     }
     public function wc_addresses_plugin(){
         load_theme_textdomain(WCA_TEXTDOMAIN, false, basename(dirname(__FILE__)) . '/languages');
         require WCA_PATH . 'dist/metabox.php';
+        require WCA_PATH . 'dist/settings.php';
     }
     public function wca_admin_assets() {
         wp_register_style( 'wca_meta_style', WCA.'src/assets/css/meta-box.css',array(),time(),'All' );
         wp_enqueue_style( 'wca_meta_style' );
-        wp_register_script('wca_admin_js', WCA.'src/assets/js/common.js', array( ),time(),true );
+        wp_register_script('wca_admin_js', WCA.'src/assets/js/admin.js', array( ),time(),true );
         wp_enqueue_script( 'wca_admin_js' );
     }
+    public function wca_frontend_assets() {
+        wp_register_style('wca_swal2_css', WCA . 'src/assets/css/sweetalert2.min.css', array(), time(), 'All');
+        wp_enqueue_style('wca_swal2_css');
+        wp_register_script('wca_swal2_js', WCA . 'src/assets/js/sweetalert2.min.js', array('jquery'), time(), true);
+        wp_enqueue_script('wca_swal2_js');
+        wp_register_script('wca_frontend_js', WCA . 'src/assets/js/frontend.js', array(), time(), true);
+        wp_enqueue_script('wca_frontend_js');
+        wp_localize_script('wca_frontend_js', 'wca_ajax', array('ajaxurl' => admin_url('admin-ajax.php')));
+    }
+
     public function wc_addresses() {
         $labels = array(
             'name'                => _x( 'WC Addresses', 'Post Type General Name', WCA_TEXTDOMAIN ),
@@ -74,16 +90,23 @@ class WC_addresses {
             'exclude_from_search' => false,
             'publicly_queryable'  => true,
             'capability_type'     => 'post',
-            'show_in_rest' => true,
+            'show_in_rest'        => true,
 
         );
 
-        // Registering your Custom Post Type
         register_post_type( 'wc-address', $args );
 
     }
 
+    public function wca_change_title_text( $title ){
+     $screen = get_current_screen();
 
+         if  ( 'wc-address' == $screen->post_type ) {
+              $title = 'Add Street Name';
+         }
+
+         return $title;
+    }
 
     public function wca_taxonomy() {
 
@@ -123,11 +146,12 @@ class WC_addresses {
 
 
     public function wca_columns( $columns ) {
-      $columns['wca_streetname'] = __( 'Street Name', WCA_TEXTDOMAIN );
+      $columns['title'] = __( 'Street Name', WCA_TEXTDOMAIN );
       $columns['wca_city'] = __( 'City', WCA_TEXTDOMAIN );
       $columns['wca_state'] = __( 'State', WCA_TEXTDOMAIN );
       $columns['wca_zip'] = __( 'Zip Code', WCA_TEXTDOMAIN );
       $columns['wca_country'] = __( 'Country', WCA_TEXTDOMAIN );
+      $columns['wca_status'] = __( 'Status', WCA_TEXTDOMAIN );
       unset( $columns['date'] );
 
       return $columns;
@@ -135,9 +159,6 @@ class WC_addresses {
 
 
     public function wca_columns_data( $column, $post_id ) {
-      if ( 'wca_streetname' === $column ) {
-        echo get_post_meta( $post_id, "wca_streetname", true);
-      }
       if ( 'wca_city' === $column ) {
         echo get_post_meta( $post_id, "wca_city", true);
       }
@@ -150,18 +171,164 @@ class WC_addresses {
       if ( 'wca_country' === $column ) {
         echo get_post_meta( $post_id, "wca_country", true);
       }
+      if ( 'wca_status' === $column ) {
+        echo ucwords(get_post_meta( $post_id, "wca_status", true));
+      }
     }
 
 
     public function wca_sortable_columns( $columns ) {
-      $columns['wca_streetname'] = 'wca_streetname';
       $columns['wca_city'] = 'wca_city';
       $columns['wca_state'] = 'wca_state';
       $columns['wca_zip'] = 'wca_zip';
       $columns['wca_country'] = 'wca_country';
+      $columns['wca_status'] = 'wca_status';
       return $columns;
     }
 
+    public function wca_filterable_column(){
+      global $typenow;
+      $post_type = 'wc-address'; // change to your post type
+      $taxonomy  = 'wca-category'; // change to your taxonomy
+      $wca_city = isset($_GET['wca_city'])? $_GET['wca_city']:'';
+      $wca_state = isset($_GET['wca_state'])? $_GET['wca_state']:'';
+      $wca_streetname = isset($_GET['wca_streetname'])? $_GET['wca_streetname']:'';
+      $wca_zip = isset($_GET['wca_zip'])? $_GET['wca_zip']:'';
+      $wca_status = isset($_GET['wca_status'])? $_GET['wca_status']:'';
+      if ($typenow == $post_type) {
+        $selected      = isset($_GET[$taxonomy]) ? $_GET[$taxonomy] : '';
+        $info_taxonomy = get_taxonomy($taxonomy);
+        wp_dropdown_categories(array(
+          'show_option_all' => sprintf( __( 'Show all %s', WCA_TEXTDOMAIN ), $info_taxonomy->label ),
+          'taxonomy'        => $taxonomy,
+          'name'            => $taxonomy,
+          'orderby'         => 'name',
+          'selected'        => $selected,
+          'show_count'      => true,
+          'hide_empty'      => true,
+        ));
+        echo "<input type='text' name='wca_streetname' value='".$wca_streetname."' placeholder='Street Name'/>";
+        echo "<input type='text' name='wca_city' value='".$wca_city."' placeholder='City'/>";
+        echo "<input type='text' name='wca_state' value='".$wca_state."' placeholder='State'/>";
+        echo "<input type='text' name='wca_zip' value='".$wca_zip."' placeholder='Zip'/>";
+        $statuses = ['Enable','Disable'];
+        ?>
+          <select name="wca_status">
+            <option value=""><?php _e('Filter By Status', WCA_TEXTDOMAIN); ?></option>
+            <?php
+                foreach ($statuses as $status) {
+                    printf
+                        (
+                            '<option value="%s"%s>%s</option>',
+                            strtolower($status),
+                            strtolower($status) == $wca_status? ' selected="selected"':'',
+                            $status
+                        );
+
+                }
+            ?>
+            </select>
+        <?php
+      };
+    }
+
+
+    public function wca_filter_query($query) {
+      global $pagenow;
+      global $typenow;
+      $post_type = 'wc-address';
+      $taxonomy  = 'wca-category';
+      $q_vars    = &$query->query_vars;
+      if ( $pagenow == 'edit.php' && isset($q_vars['post_type']) && $q_vars['post_type'] == $post_type && isset($q_vars[$taxonomy]) && is_numeric($q_vars[$taxonomy]) && $q_vars[$taxonomy] != 0 ) {
+        $term = get_term_by('id', $q_vars[$taxonomy], $taxonomy);
+        $q_vars[$taxonomy] = $term->slug;
+      }
+      $current_page = isset( $_GET['post_type'] ) ? $_GET['post_type'] : '';
+      if ( is_admin() && $post_type == $typenow && 'edit.php' == $pagenow){
+        $queryParamsCounter = 0;
+        if (isset( $_GET['wca_city'] ) && $_GET['wca_city'] != '')
+        {
+          $wca_city = $_GET['wca_city'];
+          $queryParamsCounter++;
+        }
+        if (isset( $_GET['wca_state'] ) && $_GET['wca_state'] != '')
+        {
+          $queryParamsCounter++;
+          $wca_state = $_GET['wca_state'];
+        }
+        if (isset( $_GET['wca_streetname'] ) && $_GET['wca_streetname'] != '')
+        {
+          $queryParamsCounter++;
+          $wca_streetname = $_GET['wca_streetname'];
+        }
+        if (isset( $_GET['wca_zip'] ) && $_GET['wca_zip'] != '')
+        {
+          $queryParamsCounter++;
+          $wca_zip = $_GET['wca_zip'];
+        }
+        if (isset( $_GET['wca_status'] ) && $_GET['wca_status'] != '')
+        {
+          $queryParamsCounter++;
+          $wca_status = $_GET['wca_status'];
+        }
+
+        $meta_query = array();
+
+        if ($queryParamsCounter > 1) {
+          $meta_query['relation'] = 'AND';
+        }
+
+        if (isset($wca_city)) {
+          $meta_query[] =       array(
+            'key'     => 'wca_city',
+            'value'   => $wca_city,
+            'compare' => 'LIKE',
+          );
+        }
+        if (isset($wca_state)) {
+          $meta_query[] = array(
+            'key'     => 'wca_state',
+            'value'   => $wca_state,
+            'compare' => 'LIKE',
+          );
+        }
+        if (isset($wca_streetname)) {
+          $q_vars['s'] = $wca_streetname;
+        }
+        if (isset($wca_zip)) {
+          $meta_query[] = array(
+            'key'     => 'wca_zip',
+            'value'   => $wca_zip,
+            'compare' => 'LIKE',
+          );
+        }
+        if (isset($wca_status)) {
+          $meta_query[] = array(
+            'key'     => 'wca_status',
+            'value'   => $wca_status,
+            'compare' => 'LIKE',
+          );
+        }
+        $query->set( 'meta_query', $meta_query);
+      }
+    }
+    public function wca_add_menu_pages() {
+        add_submenu_page('edit.php?post_type=wc-address', 'Settings', 'WCA Settings', 'manage_options', 'wca_settings_page', array($this, 'wca_settings_page_fn'));
+    }
+    public function wca_settings_page_fn() {
+        ?>
+          <div class="wrap">
+            <h1><?php _e('Woocommerce address Settings'); ?></h1>
+            <form method="post" action="options.php" class="qs-esi-shadow">
+                <?php
+                settings_fields("wca-options");
+                do_settings_sections("wca-plugin-options");
+                submit_button();
+                ?>
+            </form>
+          </div>
+        <?php
+    }
 }
 
 $wc_addresses = new WC_addresses();

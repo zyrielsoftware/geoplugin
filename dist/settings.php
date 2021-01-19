@@ -18,7 +18,6 @@ function wca_comingsoon_page() {
     <?php
 }
 function display_wca_panel_fields() {
-    $smoke = new Quit_smoking_progress();
         add_settings_section("wca-settings-group", "Address Section", null, "wca-plugin-options");
         add_settings_field("wca_redirection", "Select Redirect Page", "wca_comingsoon_page", "wca-plugin-options", "wca-settings-group");
         register_setting("wca-options", "wca_redirection");

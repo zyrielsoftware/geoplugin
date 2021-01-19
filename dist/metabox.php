@@ -129,16 +129,8 @@ function save_extended_wca_meta_box($post_id, $post, $update)
 
 add_action("save_post", "save_extended_wca_meta_box", 10, 3);
 
-add_action( 'woocommerce_before_main_content', 'woocommerce_output_content_wrappera', 10 );
 
-function woocommerce_output_content_wrappera(){
-    ?>
-        <script type="text/javascript">
-            jQuery(function(){
-                alert('ok');
-            });
-        </script>
-    <?php
-}
+
+
 
 ?>

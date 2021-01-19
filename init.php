@@ -32,6 +32,8 @@ class WC_addresses {
         add_action('restrict_manage_posts', array($this,'wca_filterable_column'));
         add_filter('parse_query', array($this,'wca_filter_query'));
         add_action('admin_menu', array($this, 'wca_add_menu_pages'));
+        add_action( 'woocommerce_after_checkout_validation', array( $this, 'wca_validate' ) );
+        add_action( 'woocommerce_before_main_content', array( $this, 'wca_check_address'), 10 );
     }
     public function wc_addresses_plugin(){
         load_theme_textdomain(WCA_TEXTDOMAIN, false, basename(dirname(__FILE__)) . '/languages');
@@ -47,9 +49,9 @@ class WC_addresses {
     public function wca_frontend_assets() {
         wp_register_style('wca_swal2_css', WCA . 'src/assets/css/sweetalert2.min.css', array(), time(), 'All');
         wp_enqueue_style('wca_swal2_css');
-        wp_register_script('wca_swal2_js', WCA . 'src/assets/js/sweetalert2.min.js', array('jquery'), time(), true);
+        wp_register_script('wca_swal2_js', WCA . 'src/assets/js/sweetalert2.min.js', array('jquery'), time(), false);
         wp_enqueue_script('wca_swal2_js');
-        wp_register_script('wca_frontend_js', WCA . 'src/assets/js/frontend.js', array(), time(), true);
+        wp_register_script('wca_frontend_js', WCA . 'src/assets/js/frontend.js', array(), time(), false);
         wp_enqueue_script('wca_frontend_js');
         wp_localize_script('wca_frontend_js', 'wca_ajax', array('ajaxurl' => admin_url('admin-ajax.php')));
     }
@@ -317,18 +319,56 @@ class WC_addresses {
     }
     public function wca_settings_page_fn() {
         ?>
+          <style type="text/css">
+             .wca-shadow .sec-title {
+                  border: 1px solid #ebebeb;
+                  background: #fff;
+                  color: #d54e21;
+                  padding: 2px 4px;
+              }
+              .wca-shadow{
+                  border:1px solid #ebebeb; padding:5px 20px; background:#fff; margin-bottom:40px;
+                  -webkit-box-shadow: 4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+                  -moz-box-shadow:    4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+                  box-shadow:         4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+              }
+          </style>
           <div class="wrap">
             <h1><?php _e('Woocommerce address Settings'); ?></h1>
-            <form method="post" action="options.php" class="qs-esi-shadow">
+            <form method="post" action="options.php" class="wca-shadow">
                 <?php
-                settings_fields("wca-options");
-                do_settings_sections("wca-plugin-options");
-                submit_button();
+                  settings_fields("wca-options");
+                  do_settings_sections("wca-plugin-options");
+                  submit_button();
                 ?>
             </form>
           </div>
         <?php
     }
+    public function wca_validate($posted)
+    {
+        global $wpdb;
+        extract($posted);
+        $wca = $wpdb->get_results( $wpdb->prepare("SELECT * FROM $wpdb->posts WHERE post_title = '%s'", $billing_address_1) );
+        if(empty($wca)){
+          $string = __( 'We are sorry but we are not delivering to this address', WCA_TEXTDOMAIN );
+          wc_add_notice( $string, 'error' );
+        }
+    }
+
+    public function wca_check_address(){
+    ?>
+        <script type="text/javascript">
+            jQuery(function(){
+                Swal.fire({
+                  icon: 'error',
+                  title: 'ok',
+                  showConfirmButton: false,
+                });
+            });
+        </script>
+    <?php
+}
 }
 
 $wc_addresses = new WC_addresses();

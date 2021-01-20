@@ -108,7 +108,7 @@ function save_extended_wca_meta_box($post_id, $post, $update)
 	    {
 	        $wca_status = $_POST["wca_status"];
 	    }
-    update_post_meta($post_id, "wca_zip", $wca_zip);
+    update_post_meta($post_id, "wca_status", $wca_status);
     if(isset($_POST["wca_country"]))
         {
             $wca_country = $_POST["wca_country"];

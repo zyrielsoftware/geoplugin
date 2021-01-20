@@ -34,6 +34,8 @@ class WC_addresses {
         add_action('admin_menu', array($this, 'wca_add_menu_pages'));
         add_action( 'woocommerce_after_checkout_validation', array( $this, 'wca_validate' ) );
         add_action( 'woocommerce_before_main_content', array( $this, 'wca_check_address'), 10 );
+        add_action('wp_ajax_nopriv_wca_address_validater', array( $this, 'wca_address_validater'));
+        add_action('wp_ajax_wca_address_validater', array( $this, 'wca_address_validater'));
     }
     public function wc_addresses_plugin(){
         load_theme_textdomain(WCA_TEXTDOMAIN, false, basename(dirname(__FILE__)) . '/languages');
@@ -47,9 +49,9 @@ class WC_addresses {
         wp_enqueue_script( 'wca_admin_js' );
     }
     public function wca_frontend_assets() {
-        wp_register_style('wca_swal2_css', WCA . 'src/assets/css/sweetalert2.min.css', array(), time(), 'All');
+        wp_register_style('wca_swal2_css',  WCA . 'src/assets/css/sweetalert2.min.css', array(), time(), 'All');
         wp_enqueue_style('wca_swal2_css');
-        wp_register_script('wca_swal2_js', WCA . 'src/assets/js/sweetalert2.min.js', array('jquery'), time(), false);
+        wp_register_script('wca_swal2_js',  WCA . 'src/assets/js/sweetalert2.min.js', array('jquery'), time(), false);
         wp_enqueue_script('wca_swal2_js');
         wp_register_script('wca_frontend_js', WCA . 'src/assets/js/frontend.js', array(), time(), false);
         wp_enqueue_script('wca_frontend_js');
@@ -351,24 +353,76 @@ class WC_addresses {
         extract($posted);
         $wca = $wpdb->get_results( $wpdb->prepare("SELECT * FROM $wpdb->posts WHERE post_title = '%s'", $billing_address_1) );
         if(empty($wca)){
-          $string = __( 'We are sorry but we are not delivering to this address', WCA_TEXTDOMAIN );
-          wc_add_notice( $string, 'error' );
+          //$string = ;
+          wc_add_notice( get_option('wca_error_message'), 'error' );
         }
     }
 
     public function wca_check_address(){
-    ?>
+      if(!isset($_COOKIE['address_validator'])){
+        ?>
         <script type="text/javascript">
             jQuery(function(){
-                Swal.fire({
-                  icon: 'error',
-                  title: 'ok',
-                  showConfirmButton: false,
-                });
+              swal({
+                title: 'Please enter street name',
+                input: 'text',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                //showCancelButton: true,
+                inputValidator: function(value) {
+                  return new Promise(function(resolve, reject) {
+                    if (value) {
+                      gf_data={
+                          'action': 'wca_address_validater',
+                          'address': value,
+                      };
+                      jQuery.ajax({
+                          url: "<?php echo admin_url('admin-ajax.php'); ?>",
+                          type: "POST",
+                          data: gf_data,
+                          success: function (resp) {
+                            var data = JSON.parse(resp);
+                            if(data.status == 'invalid'){
+                              window.location.replace(data.url);
+                            }else{
+                              swal({
+                                title: 'Address Confirmed',
+                                text: 'Click ok to continue.',
+                                //timer: 2000
+                              });
+                            }
+                          }
+                      });
+                    } else {
+                      reject('Please enter valid street address.');
+                    }
+                  });
+                }
+              })
             });
         </script>
-    <?php
-}
+      <?php
+      }
+    }
+    public function wca_address_validater()
+    {
+        global $wpdb;
+        extract($_POST);
+        $response = [];
+        $wca = $wpdb->get_results( $wpdb->prepare("SELECT * FROM $wpdb->posts WHERE post_title = '%s'", $address) );
+        if(empty($wca)){
+          $page_id = get_option('wca_redirection');
+          $response['url'] = get_permalink($page_id);
+          $response['status'] = 'invalid';
+          setcookie('address_validator', '', -1, "/"); 
+        }else{
+          $response['url'] = '';
+          $response['status'] = 'valid';
+          setcookie('address_validator', $address, '', "/"); 
+        }
+        echo json_encode($response);
+        die();
+    }
 }
 
 $wc_addresses = new WC_addresses();

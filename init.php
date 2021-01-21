@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: woocommerce Addresses
+ * Plugin Name: Zyriel GEO.
  * Plugin URI: http://www.expinator.com
  * Description: Manage woocommerce addresses.
  * Version: 1.1.0
@@ -21,8 +21,10 @@ class WC_addresses {
 
     public function __construct() {
         add_action( 'init', array( $this, 'wc_addresses_plugin'));
+        register_activation_hook(__FILE__, array(__CLASS__, 'wc_addresses_activated'));
+        register_deactivation_hook(__FILE__, array(__CLASS__, 'wc_addresses_deactivated'));
         add_action( 'admin_enqueue_scripts', array( $this, 'wca_admin_assets' ));
-        add_action('wp_enqueue_scripts', array($this, 'wca_frontend_assets'));
+        add_action( 'wp_enqueue_scripts', array($this, 'wca_frontend_assets'));
         add_action( 'init', array( $this, 'wc_addresses' ) );
         add_filter( 'enter_title_here', array($this,'wca_change_title_text' ));
         add_action( 'init', array( $this, 'wca_taxonomy'), 0 );
@@ -41,6 +43,24 @@ class WC_addresses {
         load_theme_textdomain(WCA_TEXTDOMAIN, false, basename(dirname(__FILE__)) . '/languages');
         require WCA_PATH . 'dist/metabox.php';
         require WCA_PATH . 'dist/settings.php';
+    }
+    public function wc_addresses_activated()
+    {
+      update_option( 'wca_error_message', 'We are sorry but we are not delivering to this address' );
+      update_option( 'wca_dialog_header', 'Welcome To Zyriel !' );
+      update_option( 'wca_dialog_error', 'Please enter valid street address.' );
+      update_option( 'wca_dialog_content', 'Currently we are delivering to certain Sub divisions. To assure we are delivering in your area please provide your street address.' );
+      update_option( 'wca_success_dialog_header', 'Perfect !' );
+      update_option( 'wca_success_dialog_content', 'We deliver to your area!. Please browse our currrent inventory and let us know what you would like us to deliver to you! Thanks!' );
+    }
+    public function wc_addresses_deactivated()
+    {
+      delete_option( 'wca_error_message' );
+      delete_option( 'wca_dialog_header' );
+      delete_option( 'wca_dialog_error' );
+      delete_option( 'wca_dialog_content' );
+      delete_option( 'wca_success_dialog_header' );
+      delete_option( 'wca_success_dialog_content' );
     }
     public function wca_admin_assets() {
         wp_register_style( 'wca_meta_style', WCA.'src/assets/css/meta-box.css',array(),time(),'All' );
@@ -360,11 +380,17 @@ class WC_addresses {
 
     public function wca_check_address(){
       if(!isset($_COOKIE['address_validator'])){
+        $wca_heading = get_option('wca_dialog_header');
+        $wca_content = get_option('wca_dialog_content');
+        $wca_perfect_heading = get_option('wca_success_dialog_header');
+        $wca_perfect_content = get_option('wca_success_dialog_content');
+        $wca_dialog_error = get_option('wca_dialog_error');
         ?>
         <script type="text/javascript">
             jQuery(function(){
               swal({
-                title: 'Please enter street name',
+                title: '<?php echo $wca_heading; ?>',
+                text: "<?php echo $wca_content; ?>",
                 input: 'text',
                 allowOutsideClick: false,
                 allowEscapeKey: false,
@@ -383,22 +409,24 @@ class WC_addresses {
                           success: function (resp) {
                             var data = JSON.parse(resp);
                             if(data.status == 'invalid'){
+                              setCookie('address_validator','',-1);
                               window.location.replace(data.url);
                             }else{
+                              setCookie('address_validator',value,1);
                               swal({
-                                title: 'Address Confirmed',
-                                text: 'Click ok to continue.',
+                                title: '<?php echo $wca_perfect_heading; ?>',
+                                text: '<?php echo $wca_perfect_content; ?>',
                                 //timer: 2000
                               });
                             }
                           }
                       });
                     } else {
-                      reject('Please enter valid street address.');
+                      reject('<?php echo $wca_dialog_error; ?>');
                     }
                   });
                 }
-              })
+              });
             });
         </script>
       <?php
@@ -414,11 +442,11 @@ class WC_addresses {
           $page_id = get_option('wca_redirection');
           $response['url'] = get_permalink($page_id);
           $response['status'] = 'invalid';
-          setcookie('address_validator', '', -1, "/"); 
+          setcookie('address_validator', '', -1, "/");
         }else{
           $response['url'] = '';
           $response['status'] = 'valid';
-          setcookie('address_validator', $address, '', "/"); 
+          setcookie('address_validator', $address, '', "/");
         }
         echo json_encode($response);
         die();

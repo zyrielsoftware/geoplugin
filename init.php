@@ -84,9 +84,9 @@ class WC_addresses {
 
     public function wc_addresses() {
         $labels = array(
-            'name'                => _x( 'WC Addresses', 'Post Type General Name', WCA_TEXTDOMAIN ),
-            'singular_name'       => _x( 'WC Address', 'Post Type Singular Name', WCA_TEXTDOMAIN ),
-            'menu_name'           => __( 'WC Addresses', WCA_TEXTDOMAIN ),
+            'name'                => _x( 'Zyriel GEO', 'Post Type General Name', WCA_TEXTDOMAIN ),
+            'singular_name'       => _x( 'Zyriel GEO', 'Post Type Singular Name', WCA_TEXTDOMAIN ),
+            'menu_name'           => __( 'Zyriel GEO', WCA_TEXTDOMAIN ),
             'parent_item_colon'   => __( 'Parent Address', WCA_TEXTDOMAIN ),
             'all_items'           => __( 'All Addresses', WCA_TEXTDOMAIN ),
             'view_item'           => __( 'View Address', WCA_TEXTDOMAIN ),
@@ -111,8 +111,8 @@ class WC_addresses {
             'show_in_menu'        => true,
             'show_in_nav_menus'   => true,
             'show_in_admin_bar'   => true,
-            'menu_position'       => 5,
-            'menu_icon'           => 'dashicons-email',
+            'menu_position'       => 90,
+            'menu_icon'           => 'dashicons-location',
             'can_export'          => true,
             'has_archive'         => true,
             'exclude_from_search' => false,
@@ -425,46 +425,6 @@ class WC_addresses {
               jQuery(document).on('click','#ok-address', function () {
                 jQuery("#modal-main").hide();
               });
-
-              /*swal({
-                title: '<?php echo $wca_heading; ?>',
-                text: "<?php echo $wca_content; ?>",
-                input: 'text',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                //showCancelButton: true,
-                inputValidator: function(value) {
-                  return new Promise(function(resolve, reject) {
-                    if (value) {
-                      gf_data={
-                          'action': 'wca_address_validater',
-                          'address': value,
-                      };
-                      jQuery.ajax({
-                          url: "<?php echo admin_url('admin-ajax.php'); ?>",
-                          type: "POST",
-                          data: gf_data,
-                          success: function (resp) {
-                            var data = JSON.parse(resp);
-                            if(data.status == 'invalid'){
-                              setCookie('address_validator','',-1);
-                              window.location.replace(data.url);
-                            }else{
-                              setCookie('address_validator',value,1);
-                              swal({
-                                title: '<?php echo $wca_perfect_heading; ?>',
-                                text: '<?php echo $wca_perfect_content; ?>',
-                                //timer: 2000
-                              });
-                            }
-                          }
-                      });
-                    } else {
-                      reject('<?php echo $wca_dialog_error; ?>');
-                    }
-                  });
-                }
-              });*/
             });
         </script>
       <?php

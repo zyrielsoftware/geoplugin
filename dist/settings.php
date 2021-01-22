@@ -54,7 +54,7 @@ function display_wca_panel_fields() {
         add_settings_section("wca-messages-group", "Dialog Section", null, "wca-plugin-options");
         add_settings_section("wca-success-group", "Address Found Dialog", null, "wca-plugin-options");
         add_settings_field("wca_redirection", "Select Redirect Page", "wca_comingsoon_page", "wca-plugin-options", "wca-settings-group");
-        add_settings_field("wca_error_message", "Error Message", "wca_error_message", "wca-plugin-options", "wca-settings-group");
+        add_settings_field("wca_error_message", "Checkout Error Message", "wca_error_message", "wca-plugin-options", "wca-settings-group");
         add_settings_field("wca_dialog_header", "Dialog Heading", "wca_dialog_header", "wca-plugin-options", "wca-messages-group");
         add_settings_field("wca_dialog_error", "Invalid street address", "wca_dialog_error", "wca-plugin-options", "wca-messages-group");
         add_settings_field("wca_dialog_content", "Dialog Content", "wca_dialog_content", "wca-plugin-options", "wca-messages-group");

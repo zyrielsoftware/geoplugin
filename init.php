@@ -31,13 +31,15 @@ class WC_addresses {
         add_filter( 'manage_wc-address_posts_columns', array( $this, 'wca_columns') );
         add_action( 'manage_wc-address_posts_custom_column', array( $this, 'wca_columns_data'), 10, 2);
         add_filter( 'manage_edit-wc-address_sortable_columns', array( $this,'wca_sortable_columns'));
-        add_action('restrict_manage_posts', array($this,'wca_filterable_column'));
-        add_filter('parse_query', array($this,'wca_filter_query'));
-        add_action('admin_menu', array($this, 'wca_add_menu_pages'));
+        add_action( 'restrict_manage_posts', array($this,'wca_filterable_column'));
+        add_filter( 'parse_query', array($this,'wca_filter_query'));
+        add_action( 'admin_menu', array($this, 'wca_add_menu_pages'));
         add_action( 'woocommerce_after_checkout_validation', array( $this, 'wca_validate' ) );
         add_action( 'woocommerce_before_main_content', array( $this, 'wca_check_address'), 10 );
-        add_action('wp_ajax_nopriv_wca_address_validater', array( $this, 'wca_address_validater'));
-        add_action('wp_ajax_wca_address_validater', array( $this, 'wca_address_validater'));
+        add_action( 'wp_ajax_nopriv_wca_address_validater', array( $this, 'wca_address_validater'));
+        add_action( 'wp_ajax_wca_address_validater', array( $this, 'wca_address_validater'));
+        add_action( 'wp_footer', array( $this, 'popup_html_content'));
+        add_filter( 'woocommerce_checkout_fields', array( $this, 'checkout_street_address_update'));
     }
     public function wc_addresses_plugin(){
         load_theme_textdomain(WCA_TEXTDOMAIN, false, basename(dirname(__FILE__)) . '/languages');
@@ -69,6 +71,8 @@ class WC_addresses {
         wp_enqueue_script( 'wca_admin_js' );
     }
     public function wca_frontend_assets() {
+        wp_register_style('wca_popup_css',  WCA . 'src/assets/css/popup-modal.css', array(), time(), 'All');
+        wp_enqueue_style('wca_popup_css');
         wp_register_style('wca_swal2_css',  WCA . 'src/assets/css/sweetalert2.min.css', array(), time(), 'All');
         wp_enqueue_style('wca_swal2_css');
         wp_register_script('wca_swal2_js',  WCA . 'src/assets/js/sweetalert2.min.js', array('jquery'), time(), false);
@@ -388,7 +392,41 @@ class WC_addresses {
         ?>
         <script type="text/javascript">
             jQuery(function(){
-              swal({
+              var html = '<h3 class="address-heading"><?php echo $wca_heading; ?></h3> <p class="address-disc"><?php echo $wca_content; ?></p><p class="input-address" id="address-input">Street Name</p><input id="address-inpup-box" class="address-box" placeholder="" type="text"><p class="address-error"></p><p class="button-content"><button id="submit-address" class="address-submit">SUBMIT</button></p>';
+              jQuery("#modal-popup").html(html);
+              jQuery("#modal-main").show();
+              jQuery(document).on('click','#submit-address', function () {
+                var address = jQuery(document).find("#address-inpup-box").val();
+                if (address!='') {
+                  gf_data={
+                      'action': 'wca_address_validater',
+                      'address': address,
+                  };
+                  jQuery.ajax({
+                      url: "<?php echo admin_url('admin-ajax.php'); ?>",
+                      type: "POST",
+                      data: gf_data,
+                      success: function (resp) {
+                        var data = JSON.parse(resp);
+                        if(data.status == 'invalid'){
+                          setCookie('address_validator','',-1);
+                          window.location.replace(data.url);
+                        }else{
+                          setCookie('address_validator',address,1);
+                          html ='<h3 class="address-heading"><?php echo $wca_perfect_heading; ?></h3><p class="address-disc-success"><?php echo $wca_perfect_content; ?></p><p class="button-content"><button id="ok-address" class="address-submit">OK</button></p>';
+                          jQuery("#modal-popup").html(html);
+                        }
+                      }
+                  });
+                }else{
+                  jQuery(".address-error").html('<?php echo $wca_dialog_error; ?>');
+                }
+              });
+              jQuery(document).on('click','#ok-address', function () {
+                jQuery("#modal-main").hide();
+              });
+
+              /*swal({
                 title: '<?php echo $wca_heading; ?>',
                 text: "<?php echo $wca_content; ?>",
                 input: 'text',
@@ -426,7 +464,7 @@ class WC_addresses {
                     }
                   });
                 }
-              });
+              });*/
             });
         </script>
       <?php
@@ -450,6 +488,26 @@ class WC_addresses {
         }
         echo json_encode($response);
         die();
+    }
+
+    public function popup_html_content(){
+      ?>
+      <div id="modal-main" class="popup-modal">
+        <div id="modal-popup" class="modal-content">
+          <p></p>
+        </div>
+      </div>
+      <?php
+    }
+    function checkout_street_address_update( $fields = array() ) {
+      if(isset($_COOKIE['address_validator'])) {
+        $fields['billing']['billing_address_1']['default']= $_COOKIE['address_validator'];
+        $fields['shipping']['billing_address_1']['default'] = $_COOKIE['address_validator'];
+      }else{
+        $fields['billing']['billing_address_1']['default']= '';
+        $fields['shipping']['billing_address_1']['default'] = '';
+      }
+      return $fields;
     }
 }
 

@@ -1,23 +1,8 @@
-# GEO Plugin
+# Zyriel: GEO
 Custom WP plugin for managing addresses that validate Woo Commerce.
 
-```
-$ ls -la
-```
 
-```
-$ git remote -v
-```
-
-```
-$ git branch -a
-```
-
--t = "type"  
--b = "base"  
-```
-$ ssh-keygen -t rsa -b -C "me@elwoodberry.dev"
-```
-```
-$ ssh-keygen -t rsa "me@elwoodberry.dev"
-```
+---
+Zyriel  
+Aubrey, TX, United States  
+www.zyriel.com  

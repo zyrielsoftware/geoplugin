@@ -26,3 +26,19 @@
 .wca_meta_inputs .hidden_mod{
 	display: none;
 }
+@keyframes rotating {
+	from{
+		-webkit-transform: rotate(0deg);
+		transform: rotate(0deg);
+	}
+	to{
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
+	}
+  }
+  
+  .rotating {
+	-webkit-animation: rotating 2s linear infinite;
+	animation: rotating 2s linear infinite;
+  }
+  

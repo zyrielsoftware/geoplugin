@@ -1,12 +1,12 @@
 <?php
 /**
- * Plugin Name: Zyriel GEO.
- * Plugin URI: http://www.expinator.com
- * Description: Manage woocommerce addresses.
- * Version: 1.1.0
- * Author: Expinator
- * Author URI: http://www.expinator.com
- * Text Domain: wc-addresses
+* Plugin Name: Zyriel GEO.
+* Plugin URI: https://github.com/zyrielsoftware
+* Description: Validate end users address to ensure that the service delivers to them.
+* Version: 0.0.2
+* Author: Zyriel Software
+* Author URI: https://github.com/zyrielsoftware
+* Text Domain: zyriel
  * */
 global $wc_addresses;
 defined('ABSPATH') or die();
@@ -40,11 +40,45 @@ class WC_addresses {
         add_action( 'wp_ajax_wca_address_validater', array( $this, 'wca_address_validater'));
         add_action( 'wp_footer', array( $this, 'popup_html_content'));
         add_filter( 'woocommerce_checkout_fields', array( $this, 'checkout_street_address_update'));
+        add_action( 'init', 'ccsve_export');
+        add_action( 'wp_ajax_wca_import_fn', array( $this, 'wca_import_fn'));
+    }
+
+    public function wca_import_fn(){
+
+      $type = $_REQUEST['hidden_first_name'];
+      $csv_path = plugin_dir_path(__FILE__) . '/csv.csv';
+      $csvfileid = $_REQUEST['csvimportfileid'];
+      $fullsize_path = get_attached_file( (int)$type );
+
+      // Add the CSV data in the processing queue
+      $rows   = array_map( 'str_getcsv', file( $fullsize_path ) );
+      //echo '<pre>';
+      // Loop over the data and add every row to the queue
+      foreach ( $rows as $row ) {
+              $proptech_company_info = array(
+                  'post_title' => esc_attr(strip_tags($row[0])),
+                  'post_type' => 'wc-address',
+                  'post_status' => 'publish'
+              );
+              $proptech_company_id = wp_insert_post($proptech_company_info);
+              wp_set_object_terms( $proptech_company_id, $row[1], 'wca-category' );
+              echo $row[0];
+
+      }
+      //echo $type;
+      wp_delete_attachment( (int)$type );
+      update_option('wca_import_file_id', '', true);
+      die();
+
     }
     public function wc_addresses_plugin(){
         load_theme_textdomain(WCA_TEXTDOMAIN, false, basename(dirname(__FILE__)) . '/languages');
         require WCA_PATH . 'dist/metabox.php';
         require WCA_PATH . 'dist/settings.php';
+        require WCA_PATH . 'dist/export-settings.php';
+        require WCA_PATH . 'dist/exporter.php';
+        $WP_CCSVE_Settings = new WP_CCSVE_Settings();
     }
     public function wc_addresses_activated()
     {
@@ -54,6 +88,13 @@ class WC_addresses {
       update_option( 'wca_dialog_content', 'Currently we are delivering to certain Sub divisions. To assure we are delivering in your area please provide your street address.' );
       update_option( 'wca_success_dialog_header', 'Perfect !' );
       update_option( 'wca_success_dialog_content', 'We deliver to your area!. Please browse our currrent inventory and let us know what you would like us to deliver to you! Thanks!' );
+      update_option('wca_import_file_id', '', true);
+      // $upload = wp_upload_dir();
+      // $upload_dir = $upload['basedir'];
+      // $upload_dir = $upload_dir . '/wca-csv-import';
+      // if (! is_dir($upload_dir)) {
+      //   mkdir( $upload_dir, 0700 );
+      // }
     }
     public function wc_addresses_deactivated()
     {
@@ -69,6 +110,10 @@ class WC_addresses {
         wp_enqueue_style( 'wca_meta_style' );
         wp_register_script('wca_admin_js', WCA.'src/assets/js/admin.js', array( ),time(),true );
         wp_enqueue_script( 'wca_admin_js' );
+
+        wp_localize_script( 'wca_admin_js', 'wca_admin_js_object', array(
+          'ajax_url' => admin_url( 'admin-ajax.php' )
+        ));
     }
     public function wca_frontend_assets() {
         wp_register_style('wca_popup_css',  WCA . 'src/assets/css/popup-modal.css', array(), time(), 'All');
@@ -342,6 +387,8 @@ class WC_addresses {
     }
     public function wca_add_menu_pages() {
         add_submenu_page('edit.php?post_type=wc-address', 'Settings', 'WCA Settings', 'manage_options', 'wca_settings_page', array($this, 'wca_settings_page_fn'));
+        add_submenu_page('edit.php?post_type=wc-address', 'Export', 'Export', 'manage_options', 'wca_export', array($this, 'wca_export_page_fn'));
+        add_submenu_page('edit.php?post_type=wc-address', 'Import', 'Import', 'manage_options', 'wca_import', array($this, 'wca_import_page_fn'));
     }
     public function wca_settings_page_fn() {
         ?>
@@ -370,6 +417,68 @@ class WC_addresses {
             </form>
           </div>
         <?php
+    }
+    public function wca_export_page_fn() {
+          if(!current_user_can('manage_options'))
+        	{
+        		wp_die(__('You do not have sufficient permissions to access this page.'));
+        	}
+      ?>
+        <style type="text/css">
+           .wca-shadow .sec-title {
+                border: 1px solid #ebebeb;
+                background: #fff;
+                color: #d54e21;
+                padding: 2px 4px;
+            }
+            .wca-shadow{
+                border:1px solid #ebebeb; padding:5px 20px; background:#fff; margin-bottom:40px;
+                -webkit-box-shadow: 4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+                -moz-box-shadow:    4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+                box-shadow:         4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+            }
+        </style>
+        <div class="wrap">
+          <h1><?php _e('WCA CSV Exporter Settings'); ?></h1>
+          <form method="post" action="options.php" class="wca-shadow">
+              <?php
+                settings_fields("wca-ccsve-group");
+                do_settings_sections("wca_ccsve_template");
+                submit_button();
+              ?>
+              <!-- <a class="ccsve_button" href="options-general.php?page=wca_ccsve_template&export=yes">Export</a> -->
+
+              <a class="ccsve_button" href="edit.php?post_type=wc-address&page=wca_export&export=yes">Export</a>
+          </form>
+        </div>
+      <?php
+  }
+
+    public function wca_import_page_fn(){
+      if(!current_user_can('manage_options'))
+        	{
+        		wp_die(__('You do not have sufficient permissions to access this page.'));
+        	}
+      ?>
+      <style type="text/css">
+           .wca-shadow .sec-title {
+                border: 1px solid #ebebeb;
+                background: #fff;
+                color: #d54e21;
+                padding: 2px 4px;
+            }
+            .wca-shadow{
+                border:1px solid #ebebeb; padding:5px 20px; background:#fff; margin-bottom:40px;
+                -webkit-box-shadow: 4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+                -moz-box-shadow:    4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+                box-shadow:         4px 4px 10px 0px rgba(50, 50, 50, 0.1);
+            }
+        </style>
+        <div class="wrap">
+          <h1><?php _e('WCA CSV Importer Settings'); ?></h1>
+          <?php require WCA_PATH . 'dist/importer.php'; ?>
+        </div>
+    <?php
     }
     public function wca_validate($posted)
     {
@@ -472,4 +581,3 @@ class WC_addresses {
 }
 
 $wc_addresses = new WC_addresses();
-
